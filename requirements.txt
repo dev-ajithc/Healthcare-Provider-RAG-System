@@ -1,0 +1,71 @@
+# Web framework
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+gunicorn==23.0.0
+
+# Frontend
+streamlit==1.42.0
+
+# Database
+sqlalchemy[asyncio]==2.0.36
+asyncpg==0.30.0
+psycopg[binary]==3.2.3
+alembic==1.14.0
+pgvector==0.3.6
+
+# Cache
+redis==5.2.1
+
+# LLM & embeddings
+anthropic==0.40.0
+openai==1.58.1
+litellm==1.55.8
+
+# RAG orchestration
+langchain==0.3.13
+langchain-core==0.3.28
+langchain-anthropic==0.3.4
+langchain-openai==0.2.14
+langsmith==0.2.5
+
+# Re-ranking
+sentence-transformers==3.3.1
+
+# Observability
+opentelemetry-api==1.29.0
+opentelemetry-sdk==1.29.0
+opentelemetry-instrumentation-fastapi==0.50b0
+opentelemetry-instrumentation-sqlalchemy==0.50b0
+opentelemetry-instrumentation-redis==0.50b0
+opentelemetry-exporter-otlp-proto-grpc==1.29.0
+prometheus-client==0.21.1
+structlog==24.4.0
+
+# Data generation
+faker==33.1.0
+numpy==2.2.1
+
+# Tokenisation & NLP
+tiktoken==0.8.0
+symspellpy==6.7.7
+presidio-analyzer==2.2.355
+presidio-anonymizer==2.2.355
+spacy==3.8.3
+langdetect==1.0.9
+
+# Validation & HTTP
+pydantic==2.10.4
+pydantic-settings==2.7.0
+httpx==0.28.1
+
+# Visualisation
+plotly==5.24.1
+
+# Utilities
+python-dotenv==1.0.1
+slowapi==0.1.9
+detoxify==0.5.2
+
+# Security
+cryptography==44.0.0
+certifi==2024.12.14

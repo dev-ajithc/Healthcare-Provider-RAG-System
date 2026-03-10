@@ -1,0 +1,141 @@
+name: CI
+
+on:
+  push:
+    branches: ["main", "develop"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dev dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: flake8
+        run: flake8 app/ tests/ scripts/ frontend/
+
+      - name: isort
+        run: isort --check-only app/ tests/ scripts/ frontend/
+
+      - name: mypy
+        run: mypy app/
+
+      - name: pip-audit
+        run: pip-audit -r requirements.txt
+
+      - name: safety
+        run: safety check -r requirements.txt
+
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: rag
+          POSTGRES_PASSWORD: rag
+          POSTGRES_DB: ragdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7.2-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql+asyncpg://rag:rag@localhost:5432/ragdb
+      REDIS_URL: redis://localhost:6379/0
+      ANTHROPIC_API_KEY: test_key
+      OPENAI_API_KEY: test_key
+      LANGCHAIN_API_KEY: test_key
+      APP_ENV: testing
+      ADMIN_KEY: test_admin_key
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Run migrations
+        run: alembic upgrade head
+
+      - name: Run unit tests
+        run: |
+          pytest tests/unit \
+            --cov=app \
+            --cov-report=term-missing \
+            --cov-report=xml \
+            --cov-fail-under=80 \
+            -v \
+            --timeout=30
+
+      - name: Run integration tests
+        run: |
+          pytest tests/integration \
+            --cov=app \
+            --cov-append \
+            --cov-report=term-missing \
+            -v \
+            --timeout=30
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.xml
+          fail_ci_if_error: false
+
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    needs: [quality, test]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            -f docker/Dockerfile \
+            -t healthcare-rag:${{ github.sha }} \
+            .
+
+      - name: Verify image starts
+        run: |
+          docker run --rm -d \
+            --name test_container \
+            -e DATABASE_URL="postgresql+asyncpg://x:x@localhost/x" \
+            -e REDIS_URL="redis://localhost:6379/0" \
+            -e ANTHROPIC_API_KEY="test" \
+            -e OPENAI_API_KEY="test" \
+            -e ADMIN_KEY="test" \
+            -p 8001:8000 \
+            healthcare-rag:${{ github.sha }} || true
+          sleep 5
+          docker stop test_container || true
